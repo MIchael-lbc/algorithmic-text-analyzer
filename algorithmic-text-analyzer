@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Text Auto-Correct & Spam Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+        }
+        textarea, input {
+            width: 100%;
+            margin: 10px 0;
+            padding: 8px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Text Auto-Correct, Bad Word & Spam Checker</h2>
+
+<textarea id="inputText" rows="6" placeholder="Enter text here..."></textarea>
+
+<input id="searchText" placeholder="Search word or phrase (optional)">
+
+<button onclick="processText()">Process</button>
+
+<pre id="output"></pre>
+
+<script>
+/* ===================== KMP ===================== */
+
+function buildLPS(pattern) {
+    let lps = Array(pattern.length).fill(0);
+    let len = 0;
+    let i = 1;
+
+    while (i < pattern.length) {
+        if (pattern[i] === pattern[len]) {
+            len++;
+            lps[i] = len;
+            i++;
+        } else {
+            if (len !== 0) {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i++;
+            }
+        }
+    }
+    return lps;
+}
+
+function KMP(text, pattern) {
+    if (pattern.length === 0) return true;
+
+    let lps = buildLPS(pattern);
+    let i = 0, j = 0;
+
+    while (i < text.length) {
+        if (text[i] === pattern[j]) {
+            i++;
+            j++;
+        }
+
+        if (j === pattern.length) return true;
+
+        else if (i < text.length && text[i] !== pattern[j]) {
+            if (j !== 0)
+                j = lps[j - 1];
+            else
+                i++;
+        }
+    }
+    return false;
+}
+
+/* ===================== AUTO CORRECT ===================== */
+
+function autoCorrect(text, dict) {
+    let words = text.split(" ");
+    let result = [];
+
+    for (let w of words) {
+        result.push(dict[w] ? dict[w] : w);
+    }
+    return result.join(" ");
+}
+
+/* ===================== BAD WORD + SPAM ===================== */
+
+function containsBadWord(text, badWords) {
+    let words = text.split(" ");
+    for (let w of words) {
+        if (badWords.has(w)) return true;
+    }
+    return false;
+}
+
+function containsSpamPhrase(text, spamPhrases) {
+    for (let phrase of spamPhrases) {
+        if (KMP(text, phrase)) return true;
+    }
+    return false;
+}
+
+/* ===================== DATA ===================== */
+
+const corrections = {
+    "u": "you",
+    "ur": "your",
+    "teh": "the",
+    "pls": "please",
+    "imo": "in my opinion",
+    "btw": "by the way"
+};
+
+const badWords = new Set([
+    "idiot",
+    "stupid",
+    "hate"
+]);
+
+const spamPhrases = [
+    "free money",
+    "click here",
+    "buy now"
+];
+
+/* ===================== MAIN ===================== */
+
+function processText() {
+    let input = document.getElementById("inputText").value;
+    let searchWord = document.getElementById("searchText").value;
+
+    let corrected = autoCorrect(input, corrections);
+
+    let output = "Corrected Text:\n" + corrected + "\n\n";
+
+    output += containsBadWord(corrected, badWords)
+        ? " Bad word detected\n"
+        : " No bad words\n";
+
+    output += containsSpamPhrase(corrected, spamPhrases)
+        ? " Spam detected\n"
+        : " No spam\n";
+
+    if (searchWord.length > 0) {
+        output += KMP(corrected, searchWord)
+            ? " Search phrase FOUND\n"
+            : " Search phrase NOT found\n";
+    }
+
+    document.getElementById("output").innerText = output;
+}
+</script>
+
+</body>
+</html>
